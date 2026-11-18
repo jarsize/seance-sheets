@@ -340,7 +340,11 @@
     const filterSuffix = filterDesc.length ? ' (' + filterDesc.join(', ') + ')' : '';
 
     // Plain filter / list request with no aggregate: "show sales where ...".
-    if (!op && !topN && !shareQuestion && (valueFilter || month || cmpMatch || /\b(show|list|find|display)\b/.test(qLower))) {
+    // If a numeric column is named but no show/list verb is present
+    // ("revenue in October"), fall through to the aggregate below instead.
+    const hasListVerb = /\b(show|list|find|display)\b/.test(qLower);
+    const namesNumericCol = !!matchColumn(q, columns, 'numeric', colInfo);
+    if (!op && !topN && !shareQuestion && (valueFilter || month || cmpMatch || hasListVerb) && (hasListVerb || !namesNumericCol)) {
       if (!filtered.length) {
         return okResult('No rows match' + filterSuffix, columns, [], null, 0);
       }

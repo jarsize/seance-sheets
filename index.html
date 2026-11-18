@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Séance Sheets - Summon answers from your spreadsheet</title>
+<meta name="description" content="Upload a CSV or Excel file, ask plain-English questions about it, and get answers as a table plus a chart. Everything runs in your browser.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-row">
+      <svg class="ghost-mark" viewBox="0 0 64 72" aria-hidden="true">
+        <path d="M32 4 C14 4 6 18 6 34 L6 62 L14 54 L22 62 L32 54 L42 62 L50 54 L58 62 L58 34 C58 18 50 4 32 4 Z" fill="#b8ffce"/>
+        <circle cx="23" cy="30" r="4.5" fill="#14092b"/>
+        <circle cx="41" cy="30" r="4.5" fill="#14092b"/>
+        <ellipse cx="32" cy="44" rx="5" ry="6.5" fill="#14092b"/>
+      </svg>
+      <div>
+        <h1>Séance Sheets</h1>
+        <p class="tagline">Summon answers from your spreadsheet.</p>
+      </div>
+      <span class="pumpkin-mark" aria-hidden="true">
+        <svg viewBox="0 0 64 56">
+          <ellipse cx="32" cy="32" rx="28" ry="21" fill="#ff8c1a"/>
+          <ellipse cx="32" cy="32" rx="19" ry="21" fill="#ffa63d"/>
+          <ellipse cx="32" cy="32" rx="9" ry="21" fill="#ff8c1a"/>
+          <path d="M30 12 Q32 4 38 4 Q34 8 34 13 Z" fill="#3fae5a"/>
+          <circle cx="23" cy="29" r="3" fill="#14092b"/>
+          <circle cx="41" cy="29" r="3" fill="#14092b"/>
+          <path d="M24 40 Q32 46 40 40" stroke="#14092b" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </span>
+    </div>
+    <p class="subhead">Drop in a CSV or Excel file, ask a question in plain English, and watch the numbers rise from the table. No account, no uploads to a server, everything happens right here in your browser.</p>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="upload-panel" aria-label="Load data">
+    <h2><span class="step-num">1</span> Load your data</h2>
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Drop a file here or choose a file">
+      <svg class="drop-icon" viewBox="0 0 48 48" aria-hidden="true">
+        <path d="M24 4 L24 26 M14 16 L24 6 L34 16" stroke="#7cffb2" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 30 L8 40 Q8 44 12 44 L36 44 Q40 44 40 40 L40 30" stroke="#a78bfa" stroke-width="3" fill="none" stroke-linecap="round"/>
+      </svg>
+      <p class="drop-main">Drop a <strong>.csv</strong> or <strong>.xlsx</strong> file here</p>
+      <p class="drop-sub">or <button type="button" class="link-button" id="browse-button">browse your files</button></p>
+      <input type="file" id="file-input" accept=".csv,.xlsx,.xls" hidden>
+    </div>
+    <div class="sample-row">
+      <span>Curious first? Try the haunted pumpkin-patch sales data.</span>
+      <button type="button" class="btn btn-secondary" id="sample-button">Load sample data</button>
+      <a class="sample-link" href="data/sample-pumpkin-patch-sales.csv" download>Download the sample CSV</a>
+    </div>
+    <p class="status-line" id="load-status" role="status"></p>
+    <div class="preview hidden" id="preview">
+      <div class="preview-meta" id="preview-meta"></div>
+      <div class="table-wrap">
+        <table id="preview-table"></table>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel" id="ask-panel" aria-label="Ask a question">
+    <h2><span class="step-num">2</span> Ask a question</h2>
+    <form id="ask-form">
+      <label class="visually-hidden" for="question-input">Ask a question about your data</label>
+      <div class="ask-row">
+        <input type="text" id="question-input" placeholder="e.g. total revenue by product" autocomplete="off" disabled>
+        <button type="submit" class="btn btn-primary" id="ask-button" disabled>Ask the spirits</button>
+      </div>
+    </form>
+    <div class="chips" id="example-chips" aria-label="Example questions"></div>
+  </section>
+
+  <section class="panel hidden" id="results-panel" aria-label="Results">
+    <h2><span class="step-num">3</span> The spirits answer</h2>
+    <p class="interpretation" id="interpretation"></p>
+    <div class="results-grid">
+      <div class="table-wrap" id="results-table-wrap">
+        <table id="results-table"></table>
+      </div>
+      <div class="chart-wrap hidden" id="chart-wrap">
+        <canvas id="results-chart" aria-label="Chart of the results"></canvas>
+      </div>
+    </div>
+    <p class="no-data-note hidden" id="no-data-note"></p>
+  </section>
+
+  <section class="panel hidden" id="help-panel" aria-label="What can I ask?">
+    <h2>The spirits are confused</h2>
+    <p id="help-message"></p>
+    <p>Try a question like one of these:</p>
+    <ul class="help-list" id="help-list"></ul>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>Built by <a href="https://wint.win">Win Twin</a> &middot; <a href="https://wint.win">wint.win</a></p>
+  <p class="footer-sub">Your file never leaves your browser. No account, no tracking, no tricks, just treats.</p>
+</footer>
+
+<script src="vendor/papaparse.min.js"></script>
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/chart.umd.min.js"></script>
+<script src="js/sample-data.js"></script>
+<script src="js/query-engine.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

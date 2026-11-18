@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # Tech: Séance Sheets
 
 ## Stack

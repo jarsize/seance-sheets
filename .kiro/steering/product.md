@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # Product: Séance Sheets
 
 Séance Sheets answers plain-English questions about spreadsheets. Upload a CSV or Excel file, ask "What were total sales by month?" or "Which product sold best?", and get a table plus a chart.
