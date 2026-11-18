@@ -166,17 +166,24 @@
     return null;
   }
 
-  function monthOf(value) {
+  function parseDateParts(value) {
+    const m = String(value).trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return { year: parseInt(m[1], 10), month: parseInt(m[2], 10), day: parseInt(m[3], 10) };
     const d = new Date(String(value));
     if (isNaN(d.getTime())) return null;
-    return d.getMonth() + 1;
+    return { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() };
+  }
+
+  function monthOf(value) {
+    const p = parseDateParts(value);
+    return p ? p.month : null;
   }
 
   function monthKey(value) {
-    const d = new Date(String(value));
-    if (isNaN(d.getTime())) return String(value);
+    const p = parseDateParts(value);
+    if (!p) return String(value);
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return months[d.getMonth()] + ' ' + d.getFullYear();
+    return months[p.month - 1] + ' ' + p.year;
   }
 
   function aggregate(values, op) {
