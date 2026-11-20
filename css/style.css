@@ -141,6 +141,13 @@ main {
   padding: 0;
 }
 
+.formats-note {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 /* Buttons */
 .btn {
   font: inherit;
@@ -262,7 +269,13 @@ tr:nth-child(even) td { background: rgba(255, 255, 255, 0.03); }
   gap: 1.25rem;
 }
 
-@media (min-width: 720px) {
+/* Table and chart sit side by side only on wide screens; on phones and
+   narrow windows they stack vertically so neither gets cramped. */
+@media (max-width: 859px) {
+  .results-grid.two-col { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 860px) {
   .results-grid.two-col { grid-template-columns: 1fr 1fr; }
 }
 

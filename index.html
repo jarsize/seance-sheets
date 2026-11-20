@@ -49,9 +49,11 @@
       <p class="drop-sub">or <button type="button" class="link-button" id="browse-button">browse your files</button></p>
       <input type="file" id="file-input" accept=".csv,.xlsx,.xls" hidden>
     </div>
+    <p class="formats-note">Supported formats: CSV and Excel (.xlsx).</p>
     <div class="sample-row">
       <span>Curious first? Try the haunted pumpkin-patch sales data.</span>
       <button type="button" class="btn btn-secondary" id="sample-button">Load sample data</button>
+      <button type="button" class="btn btn-secondary hidden" id="reset-button">Start over</button>
       <a class="sample-link" href="data/sample-pumpkin-patch-sales.csv" download>Download the sample CSV</a>
     </div>
     <p class="status-line" id="load-status" role="status"></p>

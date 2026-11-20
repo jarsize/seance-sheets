@@ -28,6 +28,7 @@
   let rows = [];
   let chart = null;
   let datasetName = '';
+  let isSampleDataset = false;
 
   const CHART_COLORS = [
     '#7cffb2', '#a78bfa', '#ff8c1a', '#38bdf8', '#f472b6',
@@ -39,34 +40,80 @@
     loadStatus.className = 'status-line' + (kind ? ' ' + kind : '');
   }
 
-  function formatValue(v) {
+  // Formats a cell value. Money columns (Revenue, Price, Cost, Sales,
+  // Amount, Total) get a "$" and two decimals; other numbers get plain
+  // thousands separators.
+  function formatValue(v, colName) {
     if (v === null || v === undefined) return '';
     if (typeof v === 'number') {
       if (!isFinite(v)) return String(v);
+      if (colName && SeanceQuery.isMoneyColumn(colName)) return SeanceQuery.formatMoney(v);
       return Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
     }
     return String(v);
   }
 
-  function setData(newColumns, newRows, name) {
+  // Rebuilds the example question chips. The sample dataset keeps its
+  // curated questions; a custom upload gets questions generated from its
+  // own columns.
+  function renderChips() {
+    const questions = (!rows.length || isSampleDataset)
+      ? SeanceQuery.EXAMPLE_QUESTIONS
+      : SeanceQuery.generateExampleQuestions(rows, columns);
+    chipsBox.innerHTML = '';
+    questions.forEach((q) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip';
+      chip.textContent = q;
+      chip.disabled = !rows.length;
+      chip.addEventListener('click', () => ask(q));
+      chipsBox.appendChild(chip);
+    });
+  }
+
+  function setData(newColumns, newRows, name, isSample) {
     columns = newColumns;
     rows = newRows;
     datasetName = name;
+    isSampleDataset = !!isSample;
     questionInput.disabled = false;
     askButton.disabled = false;
-    chipsBox.querySelectorAll('.chip').forEach((c) => { c.disabled = false; });
+    renderChips();
     setStatus('Loaded ' + rows.length.toLocaleString('en-US') + ' rows from ' + name + '.', 'success');
     renderPreview();
     resultsPanel.classList.add('hidden');
     helpPanel.classList.add('hidden');
+    $('reset-button').classList.remove('hidden');
+  }
+
+  function clearData() {
+    columns = [];
+    rows = [];
+    datasetName = '';
+    isSampleDataset = false;
+    if (chart) { chart.destroy(); chart = null; }
+    questionInput.value = '';
+    questionInput.disabled = true;
+    askButton.disabled = true;
+    fileInput.value = '';
+    setStatus('Cleared. Load a file or the sample data to start again.');
+    preview.classList.add('hidden');
+    resultsPanel.classList.add('hidden');
+    helpPanel.classList.add('hidden');
+    $('reset-button').classList.add('hidden');
+    renderChips();
   }
 
   function renderPreview() {
+    const shownNote = rows.length <= 5
+      ? 'Showing all ' + rows.length + ' row' + (rows.length === 1 ? '' : 's') + '.'
+      : 'Showing the first 5 rows.';
     previewMeta.innerHTML = '<strong>' + rows.length.toLocaleString('en-US') + ' rows</strong> and ' +
-      columns.length + ' columns: ' + columns.map(escapeHtml).join(', ') + '. Showing the first 5 rows.';
+      columns.length + ' columns: ' + columns.map(escapeHtml).join(', ') + '. ' + shownNote;
     const head = '<thead><tr>' + columns.map((c) => '<th>' + escapeHtml(c) + '</th>').join('') + '</tr></thead>';
     const body = '<tbody>' + rows.slice(0, 5).map((r) =>
-      '<tr>' + columns.map((c) => '<td>' + escapeHtml(formatValue(r[c])) + '</td>').join('') + '</tr>'
+      '<tr>' + columns.map((c) => '<td>' + escapeHtml(formatValue(r[c], c)) + '</td>').join('') + '</tr>'
     ).join('') + '</tbody>';
     previewTable.innerHTML = head + body;
     preview.classList.remove('hidden');
@@ -150,7 +197,7 @@
   }
 
   function loadSample() {
-    setData(SAMPLE_COLUMNS.slice(), SAMPLE_DATA.map((r) => Object.assign({}, r)), 'the sample pumpkin-patch dataset');
+    setData(SAMPLE_COLUMNS.slice(), SAMPLE_DATA.map((r) => Object.assign({}, r)), 'the sample pumpkin-patch dataset', true);
     questionInput.focus();
   }
 
@@ -158,7 +205,7 @@
     const q = (question || '').trim();
     if (!q) return;
     questionInput.value = q;
-    const result = SeanceQuery.answerQuestion(rows, columns, q);
+    const result = SeanceQuery.answerQuestion(rows, columns, q, { useSampleExamples: isSampleDataset });
     if (!result.ok) {
       resultsPanel.classList.add('hidden');
       helpMessage.textContent = result.message;
@@ -176,7 +223,7 @@
     interpretationEl.textContent = result.interpretation;
     const head = '<thead><tr>' + result.headers.map((h) => '<th>' + escapeHtml(h) + '</th>').join('') + '</tr></thead>';
     const body = '<tbody>' + result.rows.map((row) =>
-      '<tr>' + row.map((v) => '<td>' + escapeHtml(formatValue(v)) + '</td>').join('') + '</tr>'
+      '<tr>' + row.map((v, i) => '<td>' + escapeHtml(formatValue(v, result.headers[i])) + '</td>').join('') + '</tr>'
     ).join('') + '</tbody>';
     resultsTable.innerHTML = head + body;
     resultsTableWrap.classList.toggle('hidden', !result.rows.length);
@@ -188,6 +235,13 @@
     renderChart(result.chart);
     resultsPanel.classList.remove('hidden');
     resultsPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  // Formats a chart value: compact "$" form for money, plain otherwise.
+  function formatChartValue(v, money) {
+    if (typeof v !== 'number' || !isFinite(v)) return String(v);
+    if (money) return SeanceQuery.formatMoneyCompact(v);
+    return Number.isInteger(v) ? v.toLocaleString('en-US') : v.toLocaleString('en-US', { maximumFractionDigits: 2 });
   }
 
   function renderChart(spec) {
@@ -202,6 +256,7 @@
     grid.classList.add('two-col');
     const colors = spec.labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
     const isDoughnut = spec.type === 'doughnut';
+    const horizontal = spec.type === 'bar' && spec.horizontal;
     const dataset = {
       label: spec.label,
       data: spec.values,
@@ -210,36 +265,74 @@
       borderWidth: isDoughnut ? 2 : 1,
       tension: 0.3,
     };
+    // Inline plugin: draws the value at the end of each bar and above each
+    // line point, so the numbers are visible without checking the table.
+    const valueLabels = {
+      id: 'seanceValueLabels',
+      afterDatasetsDraw: function (c) {
+        const ctx = c.ctx;
+        ctx.save();
+        ctx.font = '600 11px "Segoe UI", system-ui, sans-serif';
+        ctx.fillStyle = '#f2ecff';
+        ctx.textBaseline = 'middle';
+        const isHorizontal = c.config.options.indexAxis === 'y';
+        c.data.datasets.forEach((ds, di) => {
+          const meta = c.getDatasetMeta(di);
+          meta.data.forEach((el, i) => {
+            const text = formatChartValue(ds.data[i], spec.money);
+            if (isHorizontal) {
+              ctx.textAlign = 'left';
+              ctx.fillText(text, el.x + 6, el.y);
+            } else if (c.config.type === 'line') {
+              ctx.textAlign = 'center';
+              ctx.fillText(text, el.x, el.y - 12);
+            } else {
+              ctx.textAlign = 'center';
+              ctx.fillText(text, el.x, el.y - 8);
+            }
+          });
+        });
+        ctx.restore();
+      },
+    };
+    const categoryAxis = {
+      ticks: { color: '#b9a8d9' },
+      grid: { color: 'rgba(185, 168, 217, 0.15)' },
+    };
+    const valueAxis = {
+      ticks: {
+        color: '#b9a8d9',
+        callback: spec.money ? (v) => SeanceQuery.formatMoneyCompact(v) : undefined,
+      },
+      grid: { color: 'rgba(185, 168, 217, 0.15)' },
+      beginAtZero: true,
+      // Headroom so the value labels fit past the longest bar or top point.
+      grace: '12%',
+    };
+    const scales = isDoughnut ? {} : (horizontal
+      ? { x: valueAxis, y: categoryAxis }
+      : { x: categoryAxis, y: valueAxis });
     chart = new Chart($('results-chart'), {
       type: spec.type,
       data: { labels: spec.labels, datasets: [dataset] },
       options: {
         responsive: true,
         maintainAspectRatio: true,
+        indexAxis: horizontal ? 'y' : 'x',
         plugins: {
           legend: {
             display: isDoughnut,
             labels: { color: '#f2ecff' },
           },
         },
-        scales: isDoughnut ? {} : {
-          x: { ticks: { color: '#b9a8d9' }, grid: { color: 'rgba(185, 168, 217, 0.15)' } },
-          y: { ticks: { color: '#b9a8d9' }, grid: { color: 'rgba(185, 168, 217, 0.15)' }, beginAtZero: true },
-        },
+        scales: scales,
       },
+      plugins: isDoughnut ? [] : [valueLabels],
     });
   }
 
-  // Example question chips.
-  SeanceQuery.EXAMPLE_QUESTIONS.forEach((q) => {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = 'chip';
-    chip.textContent = q;
-    chip.disabled = true;
-    chip.addEventListener('click', () => ask(q));
-    chipsBox.appendChild(chip);
-  });
+  // Example question chips (sample questions until data is loaded).
+  renderChips();
 
   // Upload wiring.
   dropzone.addEventListener('click', (e) => {
@@ -265,6 +358,7 @@
   });
 
   $('sample-button').addEventListener('click', loadSample);
+  $('reset-button').addEventListener('click', clearData);
   $('ask-form').addEventListener('submit', (e) => {
     e.preventDefault();
     ask(questionInput.value);

@@ -219,11 +219,11 @@
     return result;
   }
 
-  function fail(message) {
+  function fail(message, examples) {
     return {
       ok: false,
       message: message,
-      examples: EXAMPLE_QUESTIONS.slice(),
+      examples: examples || EXAMPLE_QUESTIONS.slice(),
       interpretation: null,
       headers: [],
       rows: [],
@@ -249,17 +249,96 @@
     return { sum: 'Total', avg: 'Average', min: 'Minimum', max: 'Maximum', count: 'Count' }[op] || op;
   }
 
-  function opVerb(op) {
-    return { sum: 'Summing', avg: 'Averaging', min: 'Finding the minimum of', max: 'Finding the maximum of', count: 'Counting' }[op] || op;
+  // A column holds money when its name contains a money word.
+  function isMoneyColumn(name) {
+    return /\b(revenue|price|cost|sales|amount|total)\b/i.test(String(name));
+  }
+
+  // "$1,234.56" style formatting for money values.
+  function formatMoney(value) {
+    const n = Number(value);
+    if (!isFinite(n)) return String(value);
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Compact money formatting for chart ticks and labels: "$1,234" for whole
+  // amounts, "$127.50" when the value has cents.
+  function formatMoneyCompact(value) {
+    const n = Number(value);
+    if (!isFinite(n)) return String(value);
+    if (Number.isInteger(n)) return '$' + n.toLocaleString('en-US');
+    return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // Pluralize the last word of a column name, lowercased: "Product" gives
+  // "products", "Patch Location" gives "patch locations".
+  function pluralize(name) {
+    const parts = String(name).trim().toLowerCase().split(/\s+/);
+    let last = parts[parts.length - 1];
+    if (/(s|x|z|ch|sh)$/.test(last)) last = last + 'es';
+    else if (/[^aeiou]y$/.test(last)) last = last.slice(0, -1) + 'ies';
+    else last = last + 's';
+    parts[parts.length - 1] = last;
+    return parts.join(' ');
+  }
+
+  // Natural-language heading for an aggregate result, derived from the
+  // actual query: "Total revenue", "Total revenue by product",
+  // "Top 3 products by revenue", "Share of revenue by product".
+  // opts: { topN, share, dateGranularity }
+  function aggregateHeading(op, valueCol, groupCol, opts) {
+    opts = opts || {};
+    const value = String(valueCol).toLowerCase();
+    const group = opts.dateGranularity === 'month'
+      ? 'month'
+      : (groupCol ? String(groupCol).toLowerCase() : null);
+    if (opts.share && group) return 'Share of ' + value + ' by ' + group;
+    if (opts.topN && groupCol) {
+      const byPart = op === 'sum' ? value : opLabel(op).toLowerCase() + ' ' + value;
+      return 'Top ' + opts.topN + ' ' + pluralize(groupCol) + ' by ' + byPart;
+    }
+    if (group) return opLabel(op) + ' ' + value + ' by ' + group;
+    return opLabel(op) + ' ' + value;
+  }
+
+  // Example questions built from the loaded file's actual columns, so the
+  // chips stay relevant after a custom upload. Only questions the engine
+  // can answer are generated.
+  function generateExampleQuestions(rows, columns) {
+    const colInfo = analyzeColumns(rows, columns);
+    const numericCols = columns.filter((c) => colInfo[c].type === 'numeric');
+    const catCols = columns.filter((c) => colInfo[c].type === 'categorical');
+    const dateCols = columns.filter((c) => colInfo[c].type === 'date');
+    const out = [];
+    const num = numericCols[0];
+    const cat = catCols[0];
+    if (num) out.push('What is the total ' + num + '?');
+    if (num && cat) out.push('Total ' + num + ' by ' + cat);
+    if (num && cat) out.push('Top 3 ' + pluralize(cat) + ' by ' + num);
+    if (num) out.push('Average ' + num);
+    if (num && dateCols.length) out.push(num + ' by month');
+    if (cat && colInfo[cat].distinct.length) {
+      out.push('Show rows where ' + cat + ' is ' + colInfo[cat].distinct[0]);
+    }
+    out.push('How many rows are there?');
+    out.push('Show all');
+    return out;
   }
 
   // Main entry point. rows: array of objects keyed by column name.
-  function answerQuestion(rows, columns, question) {
+  // options.useSampleExamples (default true) keeps the curated sample
+  // questions as the fallback examples; pass false for a custom upload so
+  // the examples are generated from the loaded file's own columns.
+  function answerQuestion(rows, columns, question, options) {
+    const useSampleExamples = !options || options.useSampleExamples !== false;
     if (!rows || !rows.length) {
       return fail('No data is loaded yet. Upload a CSV or Excel file, or load the sample data, then ask away.');
     }
+    const examples = useSampleExamples
+      ? EXAMPLE_QUESTIONS.slice()
+      : generateExampleQuestions(rows, columns);
     if (!question || !question.trim()) {
-      return fail('Ask me something about your data. Here are some questions I understand:');
+      return fail('Ask me something about your data.', examples);
     }
     const q = question.trim();
     const qLower = q.toLowerCase();
@@ -367,15 +446,16 @@
       if (groupCol) {
         const grouped = groupRows(filtered, groupCol, null, 'count');
         const table = grouped.map((g) => [g.key, g.value]);
+        const groupName = dateGranularity === 'month' ? 'month' : String(groupCol).toLowerCase();
         return okResult(
-          'Counting rows grouped by ' + groupCol + filterSuffix,
+          'Row count by ' + groupName + filterSuffix,
           [groupCol, 'Count'], table,
-          { type: 'bar', labels: grouped.map((g) => g.key), values: grouped.map((g) => g.value), label: 'Count' },
+          { type: 'bar', horizontal: true, money: false, labels: grouped.map((g) => g.key), values: grouped.map((g) => g.value), label: 'Count' },
           null
         );
       }
       return okResult(
-        'Counting rows' + filterSuffix,
+        'Row count' + filterSuffix,
         ['Count'], [[filtered.length]], null, filtered.length
       );
     }
@@ -387,10 +467,10 @@
       valueCol = null;
     }
     if (!valueCol && op) {
-      return fail('I could not tell which number column you mean. Try naming one, like Revenue or Quantity.');
+      return fail('I could not tell which number column you mean. Try naming one, like Revenue or Quantity.', examples);
     }
     if (!valueCol && !op) {
-      return fail('I did not understand that question. Try one of these instead:');
+      return fail('I did not understand that question.', examples);
     }
     if (!op) op = 'sum';
 
@@ -409,15 +489,19 @@
         if (shareQuestion) chartType = 'doughnut';
         chart = {
           type: chartType,
+          // Horizontal bars keep long category names readable.
+          horizontal: chartType === 'bar',
+          money: isMoneyColumn(valueCol),
           labels: grouped.map((g) => g.key),
           values: grouped.map((g) => g.value),
           label: label,
         };
       }
-      let interp = opVerb(op) + ' ' + valueCol + ' grouped by ' + groupCol;
-      if (dateGranularity === 'month') interp += ' (by month)';
-      if (topN) interp = 'Top ' + topN + ' ' + groupCol + ' values by ' + opLabel(op).toLowerCase() + ' ' + valueCol;
-      if (shareQuestion) interp = 'Share of ' + opLabel(op).toLowerCase() + ' ' + valueCol + ' by ' + groupCol;
+      const interp = aggregateHeading(op, valueCol, groupCol, {
+        topN: topN,
+        share: shareQuestion,
+        dateGranularity: dateGranularity,
+      });
       return okResult(interp + filterSuffix, [groupCol, label], table, chart, null);
     }
 
@@ -426,11 +510,11 @@
     filtered.forEach((r) => { if (isNumericValue(r[valueCol])) values.push(toNumber(r[valueCol])); });
     const result = aggregate(values, op);
     if (result === null) {
-      return okResult(opVerb(op) + ' ' + valueCol + filterSuffix + ': no numeric values found',
+      return okResult(aggregateHeading(op, valueCol, null, {}) + filterSuffix + ': no numeric values found',
         [opLabel(op) + ' ' + valueCol], [['(no data)']], null, null);
     }
     return okResult(
-      opVerb(op) + ' ' + valueCol + filterSuffix,
+      aggregateHeading(op, valueCol, null, {}) + filterSuffix,
       [opLabel(op) + ' ' + valueCol], [[result]], null, result
     );
   }
@@ -439,6 +523,12 @@
     answerQuestion: answerQuestion,
     analyzeColumns: analyzeColumns,
     matchColumn: matchColumn,
+    isMoneyColumn: isMoneyColumn,
+    formatMoney: formatMoney,
+    formatMoneyCompact: formatMoneyCompact,
+    pluralize: pluralize,
+    aggregateHeading: aggregateHeading,
+    generateExampleQuestions: generateExampleQuestions,
     EXAMPLE_QUESTIONS: EXAMPLE_QUESTIONS,
   };
 });
