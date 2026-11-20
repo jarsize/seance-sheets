@@ -139,7 +139,33 @@ check('gibberish question offers examples', bad.examples.length > 0, true);
 r = ask('show all');
 if (r) check('show all row count', r.scalar, rows.length);
 
-// 14. Natural headings (no machine-like "Summing Revenue" phrasing).
+// 14. Trailing question mark must not break "by month" (found in browser check).
+r = ask('What were total sales by month?');
+if (r) {
+  check('sales by month? groups', r.rows.length, 2);
+  check('sales by month? chart type', r.chart && r.chart.type, 'line');
+}
+
+// 15. Superlative "which" questions rank a text column and return the winner.
+function totalsBy(col, valCol) {
+  const t = {};
+  rows.forEach((row) => { t[row[col]] = (t[row[col]] || 0) + row[valCol]; });
+  return Object.entries(t).sort((a, b) => b[1] - a[1]);
+}
+const byQty = totalsBy('Product', 'Quantity');
+r = ask('Which product sold best?');
+if (r) {
+  check('which product sold best', r.rows[0][0], byQty[0][0]);
+  check('heading: which product sold best', r.interpretation, 'Product with the highest total quantity');
+}
+const byRev = totalsBy('Patch Location', 'Revenue');
+r = ask('Which location had the lowest revenue?');
+if (r) {
+  check('which location lowest revenue', r.rows[0][0], byRev[byRev.length - 1][0]);
+  check('heading: which location lowest revenue', r.interpretation, 'Patch Location with the lowest total revenue');
+}
+
+// 16. Natural headings (no machine-like "Summing Revenue" phrasing).
 r = ask('What is the total revenue?');
 if (r) check('heading: total revenue', r.interpretation, 'Total revenue');
 r = ask('total revenue by product');
@@ -157,7 +183,7 @@ if (r) check('heading: row count', r.interpretation, 'Row count');
 r = ask('count rows by product');
 if (r) check('heading: row count by product', r.interpretation, 'Row count by product');
 
-// 15. Money detection and formatting.
+// 17. Money detection and formatting.
 check('money: Revenue', qe.isMoneyColumn('Revenue'), true);
 check('money: Unit Price', qe.isMoneyColumn('Unit Price'), true);
 check('money: Total Sales', qe.isMoneyColumn('Total Sales'), true);
@@ -169,7 +195,7 @@ check('formatMoney whole number', qe.formatMoney(3060), '$3,060.00');
 check('formatMoneyCompact whole number', qe.formatMoneyCompact(3060), '$3,060');
 check('formatMoneyCompact with cents', qe.formatMoneyCompact(127.5), '$127.50');
 
-// 16. Chart specs: horizontal bars for grouped results, money flag set.
+// 18. Chart specs: horizontal bars for grouped results, money flag set.
 r = ask('total revenue by product');
 if (r) {
   check('grouped bar chart is horizontal', r.chart && r.chart.horizontal, true);
@@ -186,13 +212,13 @@ if (r) {
   check('count chart is not money', r.chart && r.chart.money, false);
 }
 
-// 17. Pluralization for headings and example questions.
+// 19. Pluralization for headings and example questions.
 check('pluralize Product', qe.pluralize('Product'), 'products');
 check('pluralize Patch Location', qe.pluralize('Patch Location'), 'patch locations');
 check('pluralize Category', qe.pluralize('Category'), 'categories');
 check('pluralize Class', qe.pluralize('Class'), 'classes');
 
-// 18. Example questions generated from a custom file's own columns.
+// 20. Example questions generated from a custom file's own columns.
 const customCols = ['City', 'Visitors', 'Ticket Price'];
 const customRows = [
   { City: 'Salem', Visitors: 120, 'Ticket Price': 12.5 },

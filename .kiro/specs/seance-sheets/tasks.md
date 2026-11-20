@@ -23,12 +23,12 @@ Status key: [ ] not started, [~] in progress, [x] done.
   - _Requirements: 2.1, 2.2, 2.3, 2.4_
   - Done 2026-11-18. 66 rows in both copies; revenue totals match exactly ($10,743.75).
 
-- [~] 4. Build the file upload and data loader
+- [x] 4. Build the file upload and data loader
   - Drag-and-drop zone plus file picker for .csv and .xlsx
   - PapaParse for CSV, SheetJS first worksheet for .xlsx
   - Column names, row count, 5-row preview; clear errors on bad files
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-  - Code written 2026-11-18; browser verification of real uploads still pending (task 9).
+  - Code written 2026-11-18. Verified 2026-11-18 in headless Chrome (see task 9).
 
 - [x] 5. Build the deterministic query engine
   - Operation detection (sum, average, count, min, max), top-N, group-by, filters
@@ -36,33 +36,34 @@ Status key: [ ] not started, [~] in progress, [x] done.
   - Plain-words interpretation string; friendly error for unparseable questions
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 4.1, 4.2, 4.3_
   - Done 2026-11-18. Verified by the Node test suite (17/17 passing).
+  - Browser check 2026-11-18 found two parsing bugs, both fixed: a trailing "?" broke "by month", and "Which product sold best?" was not understood (superlative questions added). Suite now 21/21.
 
-- [~] 6. Build results rendering
+- [x] 6. Build results rendering
   - HTML table for rows, Chart.js chart for grouped/ranked results
   - Line chart for date/month grouping, bar chart otherwise
   - Single values shown prominently
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
-  - Code written 2026-11-18; chart rendering verified only by engine tests so far, browser check pending (task 9).
+  - Done 2026-11-18. Browser check found line/bar charts squashed to a sliver and results overflowing on phone widths; both fixed and re-verified.
 
-- [~] 7. Build the UI and example questions
+- [x] 7. Build the UI and example questions
   - Dark spooky theme, responsive layout, ghost/pumpkin CSS/SVG motif
   - Example-question chips that fill the input and run the query
   - Footer: "Built by Win Twin" linking to https://wint.win
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
-  - Code written 2026-11-18; visual check pending (task 9).
+  - Done 2026-11-18. Visual check at 1280px and 390px widths.
 
 - [x] 8. Write and run the Node test suite for the query engine
   - At least 8 representative questions with exact numeric assertions
   - All tests passing before the submission is prepared
   - _Requirements: 3.1, 3.2, 3.3, 3.4_
-  - Done 2026-11-18. 17 tests, 17 passing.
+  - Done 2026-11-18. 21 checks, 21 passing, in four timezones.
 
-- [~] 9. Verify the built app end to end
+- [x] 9. Verify the built app end to end
   - Static-server smoke check (HTTP 200, title string present)
   - Manual browser check: upload real CSV and XLSX, run example questions, confirm table and chart
   - Fresh-clone check: the site works from a clean checkout with no extra setup
   - _Requirements: 7.1, 7.2, 7.3_
-  - Static check done 2026-11-18 (all 10 asset paths 200, title correct, Win Twin link present). Browser and fresh-clone checks pending.
+  - Static check done 2026-11-18 (all 10 asset paths 200, title correct, Win Twin link present). Browser check done 2026-11-18 in headless Chrome: sample data, real CSV upload (with quoted commas), real XLSX upload, example questions, table and chart rendering, no console errors. Fresh-clone check done the same day: works from a clean checkout with a plain static server.
 
 - [ ] 10. Prepare the repo for submission
   - Public GitHub repo under @jarsize with MIT license, README, and this .kiro directory

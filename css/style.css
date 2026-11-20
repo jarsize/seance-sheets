@@ -265,18 +265,20 @@ tr:nth-child(even) td { background: rgba(255, 255, 255, 0.03); }
 
 .results-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 1.25rem;
 }
+
+.results-grid > * { min-width: 0; }
 
 /* Table and chart sit side by side only on wide screens; on phones and
    narrow windows they stack vertically so neither gets cramped. */
 @media (max-width: 859px) {
-  .results-grid.two-col { grid-template-columns: 1fr; }
+  .results-grid.two-col { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (min-width: 860px) {
-  .results-grid.two-col { grid-template-columns: 1fr 1fr; }
+  .results-grid.two-col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 }
 
 .chart-wrap {
@@ -286,7 +288,7 @@ tr:nth-child(even) td { background: rgba(255, 255, 255, 0.03); }
   padding: 1rem;
 }
 
-.chart-wrap canvas { width: 100% !important; max-height: 320px; }
+.chart-box { position: relative; height: 300px; width: 100%; }
 
 .no-data-note { color: var(--muted); }
 

@@ -317,7 +317,7 @@
       data: { labels: spec.labels, datasets: [dataset] },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
+        maintainAspectRatio: false,
         indexAxis: horizontal ? 'y' : 'x',
         plugins: {
           legend: {

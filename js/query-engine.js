@@ -285,13 +285,17 @@
   // Natural-language heading for an aggregate result, derived from the
   // actual query: "Total revenue", "Total revenue by product",
   // "Top 3 products by revenue", "Share of revenue by product".
-  // opts: { topN, share, dateGranularity }
+  // opts: { topN, share, dateGranularity, superlative }
   function aggregateHeading(op, valueCol, groupCol, opts) {
     opts = opts || {};
     const value = String(valueCol).toLowerCase();
     const group = opts.dateGranularity === 'month'
       ? 'month'
       : (groupCol ? String(groupCol).toLowerCase() : null);
+    if (opts.superlative && groupCol) {
+      return groupCol + ' with the ' + (opts.superlative === 'low' ? 'lowest ' : 'highest ') +
+        opLabel(op).toLowerCase() + ' ' + value;
+    }
     if (opts.share && group) return 'Share of ' + value + ' by ' + group;
     if (opts.topN && groupCol) {
       const byPart = op === 'sum' ? value : opLabel(op).toLowerCase() + ' ' + value;
@@ -341,7 +345,8 @@
       return fail('Ask me something about your data.', examples);
     }
     const q = question.trim();
-    const qLower = q.toLowerCase();
+    // Drop trailing punctuation so "...by month?" parses like "...by month".
+    const qLower = q.toLowerCase().replace(/[\s?!.]+$/, '');
     const colInfo = analyzeColumns(rows, columns);
     const numericCols = columns.filter((c) => colInfo[c].type === 'numeric');
     const dateCols = columns.filter((c) => colInfo[c].type === 'date');
@@ -375,6 +380,31 @@
     // Detect a group-by clause: "by <word>" or "per <word>".
     let groupCol = null;
     let dateGranularity = null;
+
+    // Superlative "which" questions: "Which product sold best?",
+    // "Which location had the lowest revenue?", "best-selling product".
+    // These rank a text column and return the single winner.
+    let superlative = null; // 'high' or 'low'
+    if (!topN) {
+      const lowWord = /\b(lowest|least|worst|fewest|smallest)\b/.test(qLower);
+      const highWord = /\b(best|most|top|highest|biggest|largest|greatest)\b/.test(qLower);
+      let subject = null;
+      const bestSelling = qLower.match(/\b(?:best|top)[\s-]?selling\s+([a-z]+)/);
+      const whichMatch = qLower.match(/\b(?:which|what)\s+([a-z]+)/);
+      if (bestSelling) subject = bestSelling[1];
+      else if (whichMatch && (lowWord || highWord)) subject = whichMatch[1];
+      if (subject) {
+        const textCols = columns.filter((c) => colInfo[c].type !== 'numeric');
+        const subjectCol = matchColumn(subject, textCols, null, colInfo);
+        if (subjectCol) {
+          groupCol = subjectCol;
+          topN = 1;
+          superlative = lowWord ? 'low' : 'high';
+          // "highest revenue" per product means the largest total, not a single row max.
+          if (op === 'max' || op === 'min' || !op) op = 'sum';
+        }
+      }
+    }
     // "top 3 products by revenue": the group column is the word after "top N",
     // and "by revenue" names the value column, so check the top phrase first.
     if (topN) {
@@ -478,7 +508,8 @@
     if (groupCol) {
       let grouped = groupRows(filtered, groupCol, valueCol, op, dateGranularity);
       if (topN) {
-        grouped = grouped.slice().sort((a, b) => (b.value || 0) - (a.value || 0)).slice(0, topN);
+        const dir = superlative === 'low' ? -1 : 1;
+        grouped = grouped.slice().sort((a, b) => dir * ((b.value || 0) - (a.value || 0))).slice(0, topN);
       }
       const label = opLabel(op) + ' ' + valueCol;
       const table = grouped.map((g) => [g.key, g.value]);
@@ -501,6 +532,7 @@
         topN: topN,
         share: shareQuestion,
         dateGranularity: dateGranularity,
+        superlative: superlative,
       });
       return okResult(interp + filterSuffix, [groupCol, label], table, chart, null);
     }

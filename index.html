@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Séance Sheets - Summon answers from your spreadsheet</title>
 <meta name="description" content="Upload a CSV or Excel file, ask plain-English questions about it, and get answers as a table plus a chart. Everything runs in your browser.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -85,7 +86,7 @@
         <table id="results-table"></table>
       </div>
       <div class="chart-wrap hidden" id="chart-wrap">
-        <canvas id="results-chart" aria-label="Chart of the results"></canvas>
+        <div class="chart-box"><canvas id="results-chart" aria-label="Chart of the results"></canvas></div>
       </div>
     </div>
     <p class="no-data-note hidden" id="no-data-note"></p>
