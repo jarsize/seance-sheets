@@ -2,19 +2,23 @@
 
 Summon answers from your spreadsheet.
 
-Upload a CSV or Excel (.xlsx) file, ask a plain-English question about it ("What were total sales by month?", "Which product sold best?"), and get an answer as a table plus a chart. No backend, no API key, no login. Everything runs in your browser.
+Half the workforce lives in spreadsheets, but most people cannot ask them a question. Séance Sheets is for the small business owner, the teacher, the nonprofit volunteer, anyone who has data and questions but no time for formulas: upload a CSV or Excel (.xlsx) file, ask a plain-English question about it ("What were total sales by month?", "Which product sold best?"), and get an answer as a table plus a chart. No backend, no API key, no login. Everything runs in your browser, and your file never leaves your machine.
 
 Built for [Kiroween 2026](https://kiroween.devpost.com/) (Frankenstein category) by John Goliash of [Win Twin](https://wint.win).
 
 ## Try it
 
-Open the live site (GitHub Pages link added once the repo is published) or serve it locally:
+Live site: **https://seance.xyx.me/**
+
+Click "Load sample data" to try it with zero upload: a haunted pumpkin-patch sales dataset is built in.
+
+Or serve it locally:
 
 ```sh
 python3 -m http.server
 ```
 
-Then open http://localhost:8000. Click "Load sample data" to try it with zero upload: a haunted pumpkin-patch sales dataset is built in.
+Then open http://localhost:8000.
 
 ## What it does
 
@@ -26,12 +30,14 @@ Then open http://localhost:8000. Click "Load sample data" to try it with zero up
   - "Average quantity by patch location"
   - "Revenue in October"
   - "Show sales where weather was foggy"
-- **See the answer.** Results render as a table and a chart (bar for grouped results, line for date/month grouping). The app states in plain words what it understood, so you can check it.
-- **Honest when unsure.** If a question cannot be understood, the app says so and suggests example questions instead of guessing.
+- **See the answer.** Results render as a table and a chart (bar for grouped results, line for date/month grouping), with values labeled on the chart. Money columns are formatted with dollar signs. The app states in plain words what it understood, so you can check it.
+- **Honest when unsure.** If a question cannot be understood, the app says so and suggests example questions instead of guessing. Example questions adapt to the columns of whatever file you loaded.
 
 ## How the query engine works
 
 The natural-language engine is deterministic logic, not a runtime LLM call. It normalizes the question, detects the operation (sum, average, count, min, max), top-N, group-by, and filters by keyword, resolves column references by fuzzy name matching plus a synonym map ("sales" means Revenue, "items" means Quantity), executes the query, and returns the result with a plain-words interpretation. There is no API key and no network call at runtime.
+
+Why deterministic? An LLM can hallucinate a number and sound confident about it. This engine parses the question and runs the arithmetic, so the answer is exact and reproducible, and the interpretation line lets you verify what it did.
 
 ## Tech
 
@@ -60,6 +66,8 @@ vendor/                     SheetJS, PapaParse, Chart.js (minified)
 test/query-engine.test.js   Node tests for the query engine
 docs/kiro-usage.md          How Kiro was used to build this project
 .kiro/                      Spec, steering docs, and agent hooks
+CNAME                       Custom domain (seance.xyx.me)
+favicon.svg                 Ghost favicon
 ```
 
 ## Kiro
