@@ -1,0 +1,1 @@
+{"hooks":[{"action":{"command":"node test/query-engine.test.js","type":"command"},"description":"Run the query-engine Node test suite whenever the agent saves a JavaScript file, so regressions in the deterministic query logic are caught immediately.","matcher":"\\.js$","name":"Run tests on save","timeout":120,"trigger":"PostFileSave"}],"version":"v1"}

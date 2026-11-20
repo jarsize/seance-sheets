@@ -1,0 +1,6 @@
+node_modules/
+.DS_Store
+*.log
+
+# NOTE: never add .kiro to this file. The Kiroween rules require the
+# .kiro directory in the repo; ignoring it could disqualify the submission.
